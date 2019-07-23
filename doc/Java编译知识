@@ -1,0 +1,676 @@
+javac 实现原理
+javac 概述
+     javac 是jdk bin目录下的一个脚本。 用于编译 java程序的源代码，但是 其实现的本质 是基于 jdk 标准类库中的 javac类库实现，所以java的编译器实质上是一个 java程序。
+
+     javac脚本 仅是一个便于启动以及传递参数的脚本文件，其内部依旧运行了 java程序。
+
+     javac 又被称作前端编译器，仅负责 源代码 与 字节码之间的转换，而在jvm内部 还存在 一个后置编译器，根据热点探测技术 可以将最有价值的 字节码转换为 机器码执行从而提升java程序的运行效率。
+
+     javac 的意义就在于 将源码编译为字节码，同时 做一些 词法，语法，语义上的检查，最后生成可供jvm运行的字节码文件。
+
+
+
+javac 源码
+在 lib 中的 tools jar 包中 sun.tools.javac;  包下管理者 java前端编译器 的class文件。 Main 类 中的 main 方法的执行 是javac程序的执行入口。
+
+复制代码
+1 public static void main(String args[])
+2     {
+         //将标准错误流获取
+3         PrintStream printstream = System.err;
+4         if (Boolean.getBoolean("javac.pipe.output"))
+5             printstream = System.out;
+          //创建 编译器对象
+6         Main main1 = new Main(printstream, "javac");
+          //调用编译器的 compile方法进行 编译 并接受 args 为参数，该参数就是  javac 后面携带的参数
+7         System.exit(main1.compile(args) ? 0 : main1.exitStatus);
+8     }
+复制代码
+compile方法的 编译过程 概括性的分析:
+1.解析与填充符号表
+
+        解析: 对java源代码的字节流进行读取解析，进行两个大致的步骤，词法解析以及语法解析
+
+                 词法解析: 识别 java源码中存在的表达语义的逻辑单元，列如 关键字 变量名 参数名 每一个逻辑单元 称为 标量。
+
+                 语法解析：将各个独立的 标量按照java语法规范形成 java语法数，语法树的每一个节点代表一个操作，运算，或者 方法调用。
+
+        填充符号表: 解析后的语法树最顶级的节点将被用来填充在符号表中，符号表存储着各个语法树的最顶级节点，填充后的符号表最终形成 待处理表。
+
+                            符号表就是一个遵从java语法的结构规范，用于组织语法树的逻辑顺序。
+
+ 2.插入式注解处理器
+
+       jdk1.5后引入注解功能，注解是一种应用字节码 属性中类的元数据进行操作的一种编程机制。
+
+       处理表形成后 会自动检测是否有注解器需要执行，若有则执行注解处理器。注解处理器实现了在可插入式的编译期改变编译过程的功能。
+
+       其本质就是 再次修改 处理表中的语法树。 一旦语法树被修改，则将再次进行 词法，语法分析并填充符号表的过程。
+
+ 3.语义分析并生成字节码
+
+       语义分析: 再次对语法树中的节点进行校验。对数据类型以及控制逻辑进行检测。
+
+                        标量检测: 检验关键字是否使用正确，类型转换是否正确等。
+
+                        数据与控制流分析: 对控制流程的逻辑进行校验。
+
+      语法糖解析:  编程语言为了 增加代码的可读性，以及减少编程出错率，提供了一些并不影响程序运行期仅在编译期有效的编程机制。
+
+                           java语言中语法糖 有 泛型，拆箱与装箱，foreach循环，可变参数，switch，枚举等，在编译期将转换为字节码遵守的规范形式。
+
+                          泛型使用类型擦出，拆装箱调用了valueOf与xxValue方法，foreach是迭代器 可变参数是数组，switch本质是 if else 的嵌套。
+
+     字节码替换:  在生成类的字节码之时，编译器后做一些默认性质的操作，当没有显示声明的构造器，则会创建默认的无参构造器，构造器分为 实例构造器与类构造器
+
+                          在字节码层面 类构造器 是指多个static代码块中的语句 收敛生成的<cinit>指令。而构造代码块与显示的构造器将收敛生成实例构造器。
+
+                          同时还会将 String类型的 +与+= 操作，默认替换为 对 StringBuffer或 StrignBudiuer的操作。
+
+    最后生成字节码。
+
+
+
+
+
+
+
+
+public synchronized boolean compile(String as[])
+    {
+        String s = null;
+        String s1 = null;
+        String s2 = null;
+        String s3 = null;
+        boolean flag = false;
+        String s4 = null;
+        short word0 = 45;
+        short word1 = 3;
+        File file = null;
+        File file1 = null;
+        String s5 = "-Xjcov";
+        String s6 = "-Xjcov:file=";
+        int i = 0x41004;
+        long l = System.currentTimeMillis();
+        Vector vector = new Vector();
+        boolean flag1 = false;
+        Object obj = null;
+        String s7 = null;
+        String s8 = null;
+        String s9 = null;
+        exitStatus = 0;
+        try
+        {
+            as = CommandLine.parse(as);
+        }
+        catch (FileNotFoundException filenotfoundexception)
+        {
+            error("javac.err.cant.read", filenotfoundexception.getMessage());
+            System.exit(1);
+        }
+        catch (IOException ioexception)
+        {
+            ioexception.printStackTrace();
+            System.exit(1);
+        }
+label0:
+        for (int j = 0; j < as.length; j++)
+        {
+            if (as[j].equals("-g"))
+            {
+                if (s8 != null && !s8.equals("-g"))
+                    error("main.conflicting.options", s8, "-g");
+                s8 = "-g";
+                i |= 0x1000;
+                i |= 0x2000;
+                i |= 0x40000;
+                continue;
+            }
+            if (as[j].equals("-g:none"))
+            {
+                if (s8 != null && !s8.equals("-g:none"))
+                    error("main.conflicting.options", s8, "-g:none");
+                s8 = "-g:none";
+                i &= 0xffffefff;
+                i &= 0xffffdfff;
+                i &= 0xfffbffff;
+                continue;
+            }
+            if (as[j].startsWith("-g:"))
+            {
+                if (s8 != null && !s8.equals(as[j]))
+                    error("main.conflicting.options", s8, as[j]);
+                s8 = as[j];
+                String s10 = as[j].substring("-g:".length());
+                i &= 0xffffefff;
+                i &= 0xffffdfff;
+                i &= 0xfffbffff;
+                do
+                {
+                    do
+                    {
+                        if (s10.startsWith("lines"))
+                        {
+                            i |= 0x1000;
+                            s10 = s10.substring("lines".length());
+                        } else
+                        if (s10.startsWith("vars"))
+                        {
+                            i |= 0x2000;
+                            s10 = s10.substring("vars".length());
+                        } else
+                        if (s10.startsWith("source"))
+                        {
+                            i |= 0x40000;
+                            s10 = s10.substring("source".length());
+                        } else
+                        {
+                            error("main.bad.debug.option", as[j]);
+                            usage_error();
+                            return false;
+                        }
+                        if (s10.length() == 0)
+                            continue label0;
+                    } while (!s10.startsWith(","));
+                    s10 = s10.substring(",".length());
+                } while (true);
+            }
+            if (as[j].equals("-O"))
+            {
+                if (s9 != null && !s9.equals("-O"))
+                    error("main.conflicting.options", s9, "-O");
+                s9 = "-O";
+                continue;
+            }
+            if (as[j].equals("-nowarn"))
+            {
+                i &= -5;
+                continue;
+            }
+            if (as[j].equals("-deprecation"))
+            {
+                i |= 0x200;
+                continue;
+            }
+            if (as[j].equals("-verbose"))
+            {
+                i |= 1;
+                continue;
+            }
+            if (as[j].equals("-nowrite"))
+            {
+                flag1 = true;
+                continue;
+            }
+            if (as[j].equals("-classpath"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (s1 != null)
+                        error("main.option.already.seen", "-classpath");
+                    s1 = as[++j];
+                } else
+                {
+                    error("main.option.requires.argument", "-classpath");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals("-sourcepath"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (s != null)
+                        error("main.option.already.seen", "-sourcepath");
+                    s = as[++j];
+                } else
+                {
+                    error("main.option.requires.argument", "-sourcepath");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals("-sysclasspath"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (s2 != null)
+                        error("main.option.already.seen", "-sysclasspath");
+                    s2 = as[++j];
+                } else
+                {
+                    error("main.option.requires.argument", "-sysclasspath");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals("-bootclasspath"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (s2 != null)
+                        error("main.option.already.seen", "-bootclasspath");
+                    s2 = as[++j];
+                } else
+                {
+                    error("main.option.requires.argument", "-bootclasspath");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals("-extdirs"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (s3 != null)
+                        error("main.option.already.seen", "-extdirs");
+                    s3 = as[++j];
+                } else
+                {
+                    error("main.option.requires.argument", "-extdirs");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals("-encoding"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (s7 != null)
+                        error("main.option.already.seen", "-encoding");
+                    s7 = as[++j];
+                } else
+                {
+                    error("main.option.requires.argument", "-encoding");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals("-target"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (s4 != null)
+                        error("main.option.already.seen", "-target");
+                    s4 = as[++j];
+                    int k = 0;
+                    do
+                    {
+                        if (k >= releases.length)
+                            break;
+                        if (releases[k].equals(s4))
+                        {
+                            word0 = majorVersions[k];
+                            word1 = minorVersions[k];
+                            break;
+                        }
+                        k++;
+                    } while (true);
+                    if (k == releases.length)
+                    {
+                        error("main.unknown.release", s4);
+                        usage_error();
+                        return false;
+                    }
+                } else
+                {
+                    error("main.option.requires.argument", "-target");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals("-d"))
+            {
+                if (j + 1 < as.length)
+                {
+                    if (file != null)
+                        error("main.option.already.seen", "-d");
+                    file = new File(as[++j]);
+                    if (!file.exists())
+                    {
+                        error("main.no.such.directory", file.getPath());
+                        usage_error();
+                        return false;
+                    }
+                } else
+                {
+                    error("main.option.requires.argument", "-d");
+                    usage_error();
+                    return false;
+                }
+                continue;
+            }
+            if (as[j].equals(s5))
+            {
+                i |= 0x40;
+                i &= 0xffffbfff;
+                i &= 0xffff7fff;
+                continue;
+            }
+            if (as[j].startsWith(s6) && as[j].length() > s6.length())
+            {
+                file1 = new File(as[j].substring(s6.length()));
+                i &= 0xffffbfff;
+                i &= 0xffff7fff;
+                i |= 0x40;
+                i |= 0x80;
+                continue;
+            }
+            if (as[j].equals("-XO"))
+            {
+                if (s9 != null && !s9.equals("-XO"))
+                    error("main.conflicting.options", s9, "-XO");
+                s9 = "-XO";
+                i |= 0x4000;
+                continue;
+            }
+            if (as[j].equals("-Xinterclass"))
+            {
+                if (s9 != null && !s9.equals("-Xinterclass"))
+                    error("main.conflicting.options", s9, "-Xinterclass");
+                s9 = "-Xinterclass";
+                i |= 0x4000;
+                i |= 0x8000;
+                i |= 0x20;
+                continue;
+            }
+            if (as[j].equals("-Xdepend"))
+            {
+                i |= 0x20;
+                continue;
+            }
+            if (as[j].equals("-Xdebug"))
+            {
+                i |= 2;
+                continue;
+            }
+            if (as[j].equals("-xdepend") || as[j].equals("-Xjws"))
+            {
+                i |= 0x400;
+                if (out == System.err)
+                    out = System.out;
+                continue;
+            }
+            if (as[j].equals("-Xstrictdefault"))
+            {
+                i |= 0x20000;
+                continue;
+            }
+            if (as[j].equals("-Xverbosepath"))
+            {
+                flag = true;
+                continue;
+            }
+            if (as[j].equals("-Xstdout"))
+            {
+                out = System.out;
+                continue;
+            }
+            if (as[j].equals("-X"))
+            {
+                error("main.unsupported.usage");
+                return false;
+            }
+            if (as[j].equals("-Xversion1.2"))
+            {
+                i |= 0x800;
+                continue;
+            }
+            if (as[j].endsWith(".java"))
+            {
+                vector.addElement(as[j]);
+            } else
+            {
+                error("main.no.such.option", as[j]);
+                usage_error();
+                return false;
+            }
+        }
+
+        if (vector.size() == 0 || exitStatus == 2)
+        {
+            usage_error();
+            return false;
+        }
+        BatchEnvironment batchenvironment = BatchEnvironment.create(out, s, s1, s2, s3);
+        if (flag)
+            output(getText("main.path.msg", batchenvironment.sourcePath.toString(), batchenvironment.binaryPath.toString()));
+        batchenvironment.flags |= i;
+        batchenvironment.majorVersion = word0;
+        batchenvironment.minorVersion = word1;
+        batchenvironment.covFile = file1;
+        batchenvironment.setCharacterEncoding(s7);
+        String s11 = getText("main.no.memory");
+        String s12 = getText("main.stack.overflow");
+        batchenvironment.error(0L, "warn.class.is.deprecated", "sun.tools.javac.Main");
+        try
+        {
+            for (Enumeration enumeration = vector.elements(); enumeration.hasMoreElements();)
+            {
+                File file2 = new File((String)enumeration.nextElement());
+                try
+                {
+                    batchenvironment.parseFile(new ClassFile(file2));
+                }
+                catch (FileNotFoundException filenotfoundexception1)
+                {
+                    batchenvironment.error(0L, "cant.read", file2.getPath());
+                    exitStatus = 2;
+                }
+            }
+
+            Object obj1 = batchenvironment.getClasses();
+            do
+            {
+                if (!((Enumeration) (obj1)).hasMoreElements())
+                    break;
+                ClassDeclaration classdeclaration = (ClassDeclaration)((Enumeration) (obj1)).nextElement();
+                if (classdeclaration.getStatus() == 4 && !classdeclaration.getClassDefinition().isLocal())
+                    try
+                    {
+                        classdeclaration.getClassDefinition(batchenvironment);
+                    }
+                    catch (ClassNotFound classnotfound) { }
+            } while (true);
+            obj1 = new ByteArrayOutputStream(4096);
+            boolean flag2;
+            do
+            {
+                flag2 = true;
+                batchenvironment.flushErrors();
+                Enumeration enumeration1 = batchenvironment.getClasses();
+                do
+                {
+                    if (!enumeration1.hasMoreElements())
+                        break;
+                    ClassDeclaration classdeclaration1 = (ClassDeclaration)enumeration1.nextElement();
+                    switch (classdeclaration1.getStatus())
+                    {
+                    case 1: // '\001'
+                    case 2: // '\002'
+                    default:
+                        break;
+
+                    case 0: // '\0'
+                        if (!batchenvironment.dependencies())
+                            continue;
+                        // fall through
+
+                    case 3: // '\003'
+                        batchenvironment.dtEvent((new StringBuilder()).append("Main.compile (SOURCE): loading, ").append(classdeclaration1).toString());
+                        flag2 = false;
+                        batchenvironment.loadDefinition(classdeclaration1);
+                        if (classdeclaration1.getStatus() != 4)
+                        {
+                            batchenvironment.dtEvent((new StringBuilder()).append("Main.compile (SOURCE): not parsed, ").append(classdeclaration1).toString());
+                            continue;
+                        }
+                        // fall through
+
+                    case 4: // '\004'
+                        if (classdeclaration1.getClassDefinition().isInsideLocal())
+                        {
+                            batchenvironment.dtEvent((new StringBuilder()).append("Main.compile (PARSED): skipping local class, ").append(classdeclaration1).toString());
+                            continue;
+                        }
+                        flag2 = false;
+                        batchenvironment.dtEvent((new StringBuilder()).append("Main.compile (PARSED): checking, ").append(classdeclaration1).toString());
+                        SourceClass sourceclass = (SourceClass)classdeclaration1.getClassDefinition(batchenvironment);
+                        sourceclass.check(batchenvironment);
+                        classdeclaration1.setDefinition(sourceclass, 5);
+                        // fall through
+
+                    case 5: // '\005'
+                        SourceClass sourceclass1 = (SourceClass)classdeclaration1.getClassDefinition(batchenvironment);
+                        if (sourceclass1.getError())
+                        {
+                            batchenvironment.dtEvent((new StringBuilder()).append("Main.compile (CHECKED): bailing out on error, ").append(classdeclaration1).toString());
+                            classdeclaration1.setDefinition(sourceclass1, 6);
+                            continue;
+                        }
+                        flag2 = false;
+                        ((ByteArrayOutputStream) (obj1)).reset();
+                        batchenvironment.dtEvent((new StringBuilder()).append("Main.compile (CHECKED): compiling, ").append(classdeclaration1).toString());
+                        sourceclass1.compile(((OutputStream) (obj1)));
+                        classdeclaration1.setDefinition(sourceclass1, 6);
+                        sourceclass1.cleanup(batchenvironment);
+                        if (sourceclass1.getNestError() || flag1)
+                            continue;
+                        String s14 = classdeclaration1.getName().getQualifier().toString().replace('.', File.separatorChar);
+                        String s15 = (new StringBuilder()).append(classdeclaration1.getName().getFlatName().toString().replace('.', '$')).append(".class").toString();
+                        File file3;
+                        if (file != null)
+                        {
+                            if (s14.length() > 0)
+                            {
+                                file3 = new File(file, s14);
+                                if (!file3.exists())
+                                    file3.mkdirs();
+                                file3 = new File(file3, s15);
+                            } else
+                            {
+                                file3 = new File(file, s15);
+                            }
+                        } else
+                        {
+                            ClassFile classfile = (ClassFile)sourceclass1.getSource();
+                            if (classfile.isZipped())
+                            {
+                                batchenvironment.error(0L, "cant.write", classfile.getPath());
+                                exitStatus = 2;
+                                continue;
+                            }
+                            file3 = new File(classfile.getPath());
+                            file3 = new File(file3.getParent(), s15);
+                        }
+                        try
+                        {
+                            FileOutputStream fileoutputstream = new FileOutputStream(file3.getPath());
+                            ((ByteArrayOutputStream) (obj1)).writeTo(fileoutputstream);
+                            fileoutputstream.close();
+                            if (batchenvironment.verbose())
+                                output(getText("main.wrote", file3.getPath()));
+                        }
+                        catch (IOException ioexception1)
+                        {
+                            batchenvironment.error(0L, "cant.write", file3.getPath());
+                            exitStatus = 2;
+                        }
+                        if (batchenvironment.print_dependencies())
+                            sourceclass1.printClassDependencies(batchenvironment);
+                        break;
+                    }
+                } while (true);
+            } while (!flag2);
+        }
+        catch (OutOfMemoryError outofmemoryerror)
+        {
+            batchenvironment.output(s11);
+            exitStatus = 3;
+            return false;
+        }
+        catch (StackOverflowError stackoverflowerror)
+        {
+            batchenvironment.output(s12);
+            exitStatus = 3;
+            return false;
+        }
+        catch (Error error1)
+        {
+            if (batchenvironment.nerrors == 0 || batchenvironment.dump())
+            {
+                error1.printStackTrace();
+                batchenvironment.error(0L, "fatal.error");
+                exitStatus = 4;
+            }
+        }
+        catch (Exception exception)
+        {
+            if (batchenvironment.nerrors == 0 || batchenvironment.dump())
+            {
+                exception.printStackTrace();
+                batchenvironment.error(0L, "fatal.exception");
+                exitStatus = 4;
+            }
+        }
+        int i1 = batchenvironment.deprecationFiles.size();
+        if (i1 > 0 && batchenvironment.warnings())
+        {
+            int j1 = batchenvironment.ndeprecations;
+            Object obj2 = batchenvironment.deprecationFiles.elementAt(0);
+            if (batchenvironment.deprecation())
+            {
+                if (i1 > 1)
+                    batchenvironment.error(0L, "warn.note.deprecations", new Integer(i1), new Integer(j1));
+                else
+                    batchenvironment.error(0L, "warn.note.1deprecation", obj2, new Integer(j1));
+            } else
+            if (i1 > 1)
+                batchenvironment.error(0L, "warn.note.deprecations.silent", new Integer(i1), new Integer(j1));
+            else
+                batchenvironment.error(0L, "warn.note.1deprecation.silent", obj2, new Integer(j1));
+        }
+        batchenvironment.flushErrors();
+        batchenvironment.shutdown();
+        boolean flag3 = true;
+        if (batchenvironment.nerrors > 0)
+        {
+            String s13 = "";
+            if (batchenvironment.nerrors > 1)
+                s13 = getText("main.errors", batchenvironment.nerrors);
+            else
+                s13 = getText("main.1error");
+            if (batchenvironment.nwarnings > 0)
+                if (batchenvironment.nwarnings > 1)
+                    s13 = (new StringBuilder()).append(s13).append(", ").append(getText("main.warnings", batchenvironment.nwarnings)).toString();
+                else
+                    s13 = (new StringBuilder()).append(s13).append(", ").append(getText("main.1warning")).toString();
+            output(s13);
+            if (exitStatus == 0)
+                exitStatus = 1;
+            flag3 = false;
+        } else
+        if (batchenvironment.nwarnings > 0)
+            if (batchenvironment.nwarnings > 1)
+                output(getText("main.warnings", batchenvironment.nwarnings));
+            else
+                output(getText("main.1warning"));
+        if (batchenvironment.covdata())
+        {
+            Assembler assembler = new Assembler();
+            assembler.GenJCov(batchenvironment);
+        }
+        if (batchenvironment.verbose())
+        {
+            l = System.currentTimeMillis() - l;
+            output(getText("main.done_in", Long.toString(l)));
+        }
+        return flag3;
+    }
